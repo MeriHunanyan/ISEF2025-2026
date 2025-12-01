@@ -49,20 +49,22 @@ featurizer  = dc.feat.CircularFingerprint(size=2048)
 X_train = featurizer.featurize(train.X)
 X_valid = featurizer.featurize(valid.X)
 X_test = featurizer.featurize(test.X)
-
+print("beforesetting type")
+print(train.y)
 y_train = train.y.astype(np.float32)
 y_valid = valid.y.astype(np.float32)
 y_test = test.y.astype(np.float32)
-
+print("aftersetting type")
+print(y_train)
 scalar = MinMaxScaler() #learns min and max and then applies it to scale the data to min and max
 X_train_s = scalar.fit_transform(X_train)
 X_val_s = scalar.transform(X_valid)
 X_test_s = scalar.transform(X_test)
 
 pca = PCA(n_components=8)
-X_trainq = pca.fit_transform(X_train)
-X_valq  = pca.transform(X_valid)
-X_testq  = pca.transform(X_test)
+X_trainq = pca.fit_transform(X_train_s)
+X_valq  = pca.transform(X_val_s)
+X_testq  = pca.transform(X_test_s)
 
 
 X_train_tf = tf.convert_to_tensor(X_train_s, dtype=tf.float32)
@@ -72,10 +74,12 @@ X_test_tf = tf.convert_to_tensor(X_test_s, dtype=tf.float32)
 X_trainq_tf = tf.convert_to_tensor(X_trainq, dtype = tf.float32)
 X_valq_tf = tf.convert_to_tensor(X_valq, dtype = tf.float32)
 X_testq_tf = tf.convert_to_tensor(X_testq, dtype = tf.float32)
-
+print(y_train)
 y_train_tf = tf.convert_to_tensor(y_train, dtype = tf.float32)
 y_val_tf = tf.convert_to_tensor(y_valid, dtype = tf.float32)
 y_test_tf = tf.convert_to_tensor(y_test, dtype = tf.float32)
+
+print(y_train_tf)
 
 np.save("../data/processed/X_train_tf.npy", X_train_tf)
 np.save("../data/processed/y_train_tf.npy", y_train_tf)
