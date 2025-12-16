@@ -5,6 +5,10 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.metrics import roc_curve, auc, roc_auc_score
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
 
 X_trainc = np.load("../data/processed/X_train_tf.npy")
 y_trainc = np.load("../data/processed/y_train_tf.npy")
@@ -39,7 +43,9 @@ print("prediction finished now start accuracy")
 
 accuracy= accuracy_score(y_testc, preds)
 print('Accuracy of the model is:', accuracy*100)
-
+fpr, tpr, thresholds = roc_curve(y_testc, preds)
+auc_score_manual = auc(fpr, tpr)
+print(f"Manual AUC Score: {auc_score_manual}")
 
 
 

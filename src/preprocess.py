@@ -7,8 +7,11 @@ import sys
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
 import tensorflow as tf
+from imblearn.over_sampling import ADASYN
+
 csv_path = "/home/merih/ISEF2025-2026/data/raw/HIV.csv"
 df = pd.read_csv(csv_path)
+df['smiles'] = pd.to_numeric(df['smiles'], errors='coerce')
 X_raw_series = df["smiles"]
 Y_raw_series = df["HIV_active"]
 
@@ -24,7 +27,7 @@ for sm, lab in zip(X_raw_series, Y_raw_series):
         continue
     # ensure SMILES is a string
     if not isinstance(sm, str):
-        print(sm+"removed")
+        #print(sm+"removed")
         print("int")
         continue
 
@@ -40,10 +43,13 @@ for sm, lab in zip(X_raw_series, Y_raw_series):
     valid_labels.append(str(lab))
 
 dataset = dc.data.NumpyDataset(np.array(valid_smiles), np.array(valid_labels))
-
+adasyn = ADASYN(sampling_strategy='minority')
 
 splitter = dc.splits.RandomSplitter()
 train, valid, test = splitter.train_valid_test_split(dataset)
+print(train.X)
+print(train.y)
+train.X, train.y = adasyn.fit_resample((train.X).reshape(-1, 1), (train.y).reshape(-1, 1))
 
 featurizer  = dc.feat.CircularFingerprint(size=2048)
 X_train = featurizer.featurize(train.X)
