@@ -8,10 +8,13 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
 import tensorflow as tf
 from imblearn.over_sampling import ADASYN
+from imblearn.over_sampling import SMOTE
+from collections import Counter
+from sklearn.preprocessing import QuantileTransformer
 
 csv_path = "/home/merih/ISEF2025-2026/data/raw/HIV.csv"
 df = pd.read_csv(csv_path)
-df['smiles'] = pd.to_numeric(df['smiles'], errors='coerce')
+#df['smiles'] = pd.to_numeric(df['smiles'], errors='coerce')
 X_raw_series = df["smiles"]
 Y_raw_series = df["HIV_active"]
 
@@ -41,41 +44,79 @@ for sm, lab in zip(X_raw_series, Y_raw_series):
 
     valid_smiles.append(str(sm))
     valid_labels.append(str(lab))
+#convert to fingerprints
+featurizer = dc.feat.CircularFingerprint(size=2048)
+valid_finger = featurizer.featurize(valid_smiles)
 
-dataset = dc.data.NumpyDataset(np.array(valid_smiles), np.array(valid_labels))
-adasyn = ADASYN(sampling_strategy='minority')
+#Make dataset
+dataset = dc.data.NumpyDataset(valid_finger, valid_labels)
 
+#split the dataset into train, valid, test
 splitter = dc.splits.RandomSplitter()
 train, valid, test = splitter.train_valid_test_split(dataset)
-print(train.X)
-print(train.y)
-train.X, train.y = adasyn.fit_resample((train.X).reshape(-1, 1), (train.y).reshape(-1, 1))
 
-featurizer  = dc.feat.CircularFingerprint(size=2048)
-X_train = featurizer.featurize(train.X)
-X_valid = featurizer.featurize(valid.X)
-X_test = featurizer.featurize(test.X)
+
+#X_train = featurizer.featurize(trainX)
+#X_valid = featurizer.featurize(valid.X)
+#X_test = featurizer.featurize(test.X)
+
+#trainX = featurizer.featurize(train.X)
+#trainy = featurizer.featurize(train.y)
+
+
+
+#ADASYN oversampling
+#print("after ADASYN")
+#adasyn = ADASYN(sampling_strategy='minority')
+
+
+#print(train.X)
+#print(train.y)
+#trainX, trainy = adasyn.fit_resample(train.X, train.y)
+unique, counts = np.unique(train.y, return_counts=True)
+print(dict(zip(unique, counts)))
+
+#SMOTE oversampling
+#print("SMOTE oversampling")
+#oversample = SMOTE()
+#trainX, trainy = oversample.fit_resample(train.X, train.y)
+#counter = Counter(trainy)
+
+#unique, counts = np.unique(trainy, return_counts=True)
+print(dict(zip(unique, counts)))
+
+#getting rid of outliers
+trainX = train.X
+trainy = train.y
+print("QuantileTransformer")
+quantile = QuantileTransformer(output_distribution = 'normal')
+data_trans = quantile.fit_transform(trainX)
+
 print("beforesetting type")
 print(train.y)
-y_train = train.y.astype(np.float32)
-y_valid = valid.y.astype(np.float32)
-y_test = test.y.astype(np.float32)
+y_train = trainy.astype(np.int8)
+y_valid = valid.y.astype(np.int8)
+y_test = test.y.astype(np.int8)
 print("aftersetting type")
 print(y_train)
+X_train = trainX
+X_val = valid.X
+X_test = test.X
+
 scalar = MinMaxScaler() #learns min and max and then applies it to scale the data to min and max
-X_train_s = scalar.fit_transform(X_train)
-X_val_s = scalar.transform(X_valid)
-X_test_s = scalar.transform(X_test)
+X_train_scaled = scalar.fit_transform(trainX)
+X_val_scaled = scalar.transform(valid.X)
+X_test_scaled = scalar.transform(test.X)
 
 pca = PCA(n_components=8)
-X_trainq = pca.fit_transform(X_train_s)
-X_valq  = pca.transform(X_val_s)
-X_testq  = pca.transform(X_test_s)
+X_trainq = pca.fit_transform(X_train_scaled)
+X_valq  = pca.transform(X_val_scaled)
+X_testq  = pca.transform(X_test_scaled)
 
 
-X_train_tf = tf.convert_to_tensor(X_train_s, dtype=tf.float32)
-X_val_tf = tf.convert_to_tensor(X_val_s, dtype=tf.float32)
-X_test_tf = tf.convert_to_tensor(X_test_s, dtype=tf.float32)
+X_train_tf = tf.convert_to_tensor(X_train, dtype=tf.float32)
+X_val_tf = tf.convert_to_tensor(X_val, dtype=tf.float32)
+X_test_tf = tf.convert_to_tensor(X_test, dtype=tf.float32)
 
 X_trainq_tf = tf.convert_to_tensor(X_trainq, dtype = tf.float32)
 X_valq_tf = tf.convert_to_tensor(X_valq, dtype = tf.float32)
@@ -98,8 +139,8 @@ np.save("../data/processed/X_valq.npy", X_valq_tf)
 np.save("../data/processed/X_testq.npy", X_testq_tf)
 
 
+print("--------------------DONE------------------------")
 """
-
 # 1. Convert SMILES strings to RDKit Mol objects
 # This ensures you have valid molecular objects for the splitter's logic
 mol_objects = [Chem.MolFromSmiles(s) for s in valid_smiles]
