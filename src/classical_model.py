@@ -33,10 +33,10 @@ xgb_test = xgb.DMatrix(X_testc, y_testc, enable_categorical=True)
 
 params = {
     'objective': 'binary:logistic',
-    'max_depth': 6,
+    'max_depth': 4,
     'learning_rate': 0.05,
-    'scale_pos_weight': 27.85614,
-    'eval_metric': 'aucpr',
+    'scale_pos_weight': 1, #27.85614
+    'eval_metric': 'auc',
     'min_child_weight':4,
     'gamma':0.5,
     'subsample': 0.8,
@@ -52,7 +52,7 @@ print("training finished")
 preds = model.predict(xgb_test)
 
 
-#fpr, tpr, thresholds = roc_curve(y_testc, preds)
+fpr, tpr, thresholds = roc_curve(y_validc, preds)
 #optimal_idx = np.argmax(tpr - fpr)
 #optimal_threshold = thresholds[optimal_idx]
 
@@ -70,15 +70,15 @@ print(type(preds))
 #define thresholds
 thresholds = arange(0, 1, 0.001)
 ## evaluate each threshold
-scores = [f1_score(y_testc, to_labels(preds, t)) for t in thresholds]
+scores = [f1_score(y_validc, to_labels(preds, t)) for t in thresholds]
 # get best threshold
 ix = argmax(scores)
 print('Threshold=%.3f, F-Score=%.5f' % (thresholds[ix], scores[ix]))
 
 
 
-fpr, tpr, thresholds = roc_curve(y_testc, preds)
-preds = (preds >= 0.771).astype(int)  #0.771
+#fpr, tpr, thresholds = roc_curve(y_testc, preds)
+preds = (preds >= thresholds[ix]).astype(int)  #0.771
 print("prediction finished now start accuracy")
 
 accuracy= accuracy_score(y_testc, preds)

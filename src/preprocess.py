@@ -11,7 +11,7 @@ from imblearn.over_sampling import ADASYN
 from imblearn.over_sampling import SMOTE
 from collections import Counter
 from sklearn.preprocessing import QuantileTransformer
-
+from sklearn.preprocessing import Normalizer
 csv_path = "/home/merih/ISEF2025-2026/data/raw/HIV.csv"
 df = pd.read_csv(csv_path)
 #df['smiles'] = pd.to_numeric(df['smiles'], errors='coerce')
@@ -22,21 +22,22 @@ Y_raw_series = df["HIV_active"]
 # ... (Assume X_raw_series, Y_raw_series are defined and cleaned into lists) ...
 valid_smiles = []
 valid_labels = []
+print("before filtering")
 # (populate lists as before) ...
 for sm, lab in zip(X_raw_series, Y_raw_series):
     if sm is None:
         print(sm+"removed")
         print("hello")
         continue
-    # ensure SMILES is a string
+     # ensure SMILES is a string
     if not isinstance(sm, str):
         #print(sm+"removed")
         print("int")
         continue
-
+ 
     if sm[0].isdigit():
         continue
-        
+    
     mol = Chem.MolFromSmiles(str(sm))
     if mol is None:
         print("hello")
@@ -45,15 +46,34 @@ for sm, lab in zip(X_raw_series, Y_raw_series):
     valid_smiles.append(str(sm))
     valid_labels.append(str(lab))
 #convert to fingerprints
+valid_X = valid_smiles
+valid_X = np.array(valid_X, dtype= str)
+valid_labels = np.array(valid_labels, dtype = str)
+#valid_X = valid_X.reshape(-1,1)
+#valid_labels = valid_labels.reshape(-1,1)
 featurizer = dc.feat.CircularFingerprint(size=2048)
-valid_finger = featurizer.featurize(valid_smiles)
+valid_X = featurizer.featurize(valid_X)
+print(valid_X.shape)
+print(valid_labels.shape)
+dataset = dc.data.NumpyDataset(valid_X, valid_labels, ids=valid_smiles)
 
+scaffoldsplitter = dc.splits.ScaffoldSplitter()
+train, valid, test = scaffoldsplitter.train_valid_test_split(dataset)
+print(train.X)
+#featurizer = dc.feat.CircularFingerprint(size=2048)
+#train_X = featurizer.featurize(train.X)
+#train_y = featurizer.featurize(train.y)
+#valid_X = featurizer.featurize(valid.X)
+#valid_y = featurizer.featurize(valid.y)
+#test_X = featurizer.featurize(test.X)
+#test_y = featurizer.featurize(test.y)
 #Make dataset
-dataset = dc.data.NumpyDataset(valid_finger, valid_labels)
+#dataset = dc.data.NumpyDataset(valid_finger, valid_labels)
 
 #split the dataset into train, valid, test
-splitter = dc.splits.RandomSplitter()
-train, valid, test = splitter.train_valid_test_split(dataset)
+#splitter = dc.splits.RandomSplitter()
+#scaffoldsplitter = dc.splits.ScaffoldSplitter()
+#train, valid, test = scaffoldsplitter.train_valid_test_split(dataset)
 
 
 #X_train = featurizer.featurize(trainX)
@@ -86,45 +106,158 @@ print(dict(zip(unique, counts)))
 print(dict(zip(unique, counts)))
 
 #getting rid of outliers
-trainX = train.X
-trainy = train.y
-print("QuantileTransformer")
-quantile = QuantileTransformer(output_distribution = 'normal')
-data_trans = quantile.fit_transform(trainX)
+#trainX = train.X
+#trainy = train.y
+#print("QuantileTransformer")
+#quantile = QuantileTransformer(output_distribution = 'normal')
+#data_trans = quantile.fit_transform(trainX)
 
 print("beforesetting type")
 print(train.y)
-y_train = trainy.astype(np.int8)
+y_train = train.y.astype(np.int8)
 y_valid = valid.y.astype(np.int8)
 y_test = test.y.astype(np.int8)
 print("aftersetting type")
 print(y_train)
-X_train = trainX
+X_train = train.X
 X_val = valid.X
 X_test = test.X
 
-scalar = MinMaxScaler() #learns min and max and then applies it to scale the data to min and max
-X_train_scaled = scalar.fit_transform(trainX)
-X_val_scaled = scalar.transform(valid.X)
-X_test_scaled = scalar.transform(test.X)
+X_trainpos = []
+X_trainneg = []
+X_testpos = []
+X_testneg = []
+X_valpos = []
+X_valneg = []
 
-pca = PCA(n_components=8)
+i = 0
+print("entering sorting part")
+while len(X_trainpos)<50:
+    print(y_train[i])
+    if y_train[i] == 1:
+        X_trainpos.append(X_train[i])
+    i+=1
+i = 0
+while len(X_testpos)<50:
+    if y_train[i] == 1:
+        X_testpos.append(X_test[i])
+    i+=1
+i=0
+while len(X_valpos)<50:
+    if y_train[i] == 1:
+        X_valpos.append(X_val[i])
+    i+=1
+i = 0
+while len(X_trainneg)<50:
+    if y_train[i] == 0:
+        X_trainneg.append(X_train[i])
+    i+= 1
+i=0
+while len(X_testneg)<50:
+    if y_train[i] == 0:
+        X_testneg.append(X_test[i])
+    i+=1
+i=0
+while len(X_valneg)<50:
+    if y_train[i] == 0:
+        X_valneg.append(X_val[i])
+    i+=1
+#print("end first sort")
+#while len(X_testpos)<50 or l`en(X_testneg)<50:
+#    if y_test[i] == 1:
+#        X_testpos.append(trainX[i])
+#    else:
+#        X_testneg.append(trainX[i])
+#    i+=1
+#print("second sort")
+#while len(X_valpos)<50 or len(X_valneg)<50:
+#    if y_test[i] == 1:
+#        X_testpos.append(trainX[i])
+#    else:
+#        X_valneg.append(trainX[i])
+#    i+=1
+#while len(X_trainpos) < 50 or len(X_trainneg) < 50 or len(X_testneg) < 50 or len(X_testpos) < 50:
+#    print(i)
+#    if y_train[i] == 1:
+#        X_trainpos.append(trainX[i])
+#        if y_test[i]==1:
+#            X_testpos.append(test.X[i]) # in train it's 1 and in test it's 1
+#        X_testneg.append(test.X[i]) # in test it's 0
+#    X_trainneg.append(trainX[i]) # in train it's 0
+#    if y_test[i] == 1:
+#        X_testpos.append(test.X[i]) # in train it's 0 in test it's 1
+#    else:
+#        X_testneg.append(test.X[i]) # in train it's 0 and in test it's 0
+#    i = i+1
+
+print("end sort")
+print(f"negcounttest: {len(X_testneg)}")
+print(f"negcounttrain: {len(X_trainneg)}")
+print(f"poscounttest: {len(X_testpos)}")
+print(f"poscounttrain: {len(X_trainpos)}")
+
+if len(X_testneg) >50:
+    X_testneg[:] = X_testneg[:50]
+if len(X_trainneg) > 50:
+    X_trainneg[:] = X_trainneg[:50]
+if len(X_valneg) > 50:
+    X_valneg[:] = X_valneg[:50]
+if len(X_testpos) > 50:
+    X_testpos[:] = X_testpos[:50]
+if len(X_trainpos)> 50:
+    X_trainpos[:] = X_trainpos[:50]
+if len(X_valpos)>50:
+    X_valpos[:] = X_valpos[:50]
+print(f"negcounttest: {len(X_testneg)}")
+print(f"negcounttrain: {len(X_trainneg)}")
+print(f"poscounttest: {len(X_testpos)}")
+print(f"poscounttrain: {len(X_trainpos)}")
+
+Xtestsampled = X_testpos + X_trainneg
+Xtrainsampled = X_trainpos + X_trainneg
+Xvalsampled = X_valpos + X_valneg
+ytestsampled = ([1] *50) + ([0] * 50)
+ytrainsampled = ([1] *50) + ([0] *50)
+yvalsampled = ([1]*50) + ([0] *50)
+
+print(f"ytestsampled:{ytestsampled}")
+print(f"ytrainsampled:{ytrainsampled}")
+scalar = MinMaxScaler(feature_range=(-np.pi, np.pi)) #learns min and max and then applies it to scale the data to min and max
+X_train_scaled = scalar.fit_transform(Xtrainsampled)
+X_val_scaled = scalar.transform(Xvalsampled)
+X_test_scaled = scalar.transform(Xtestsampled)
+print("before pca")
+pca = PCA(n_components=4)
 X_trainq = pca.fit_transform(X_train_scaled)
 X_valq  = pca.transform(X_val_scaled)
 X_testq  = pca.transform(X_test_scaled)
 
+#transformer = Normalizer(norm='l2').fit(X_trainq)
+#X_trainq = transformer.transform(X_trainq)
+#transformer = Normalizer(norm='l2').fit(X_testq)
+#X_testq = transformer.transform(X_testq)
 
+X_train = X_trainq
+X_test = X_testq
+X_val = X_valq
+y_train = ytrainsampled
+y_test = ytestsampled
+y_val = yvalsampled
+#regular data for classical model
 X_train_tf = tf.convert_to_tensor(X_train, dtype=tf.float32)
 X_val_tf = tf.convert_to_tensor(X_val, dtype=tf.float32)
 X_test_tf = tf.convert_to_tensor(X_test, dtype=tf.float32)
+y_train_tf = tf.convert_to_tensor(y_train, dtype = tf.float32)
+y_val_tf = tf.convert_to_tensor(y_val, dtype = tf.float32)
+y_test_tf = tf.convert_to_tensor(y_test, dtype = tf.float32)
 
 X_trainq_tf = tf.convert_to_tensor(X_trainq, dtype = tf.float32)
 X_valq_tf = tf.convert_to_tensor(X_valq, dtype = tf.float32)
 X_testq_tf = tf.convert_to_tensor(X_testq, dtype = tf.float32)
+y_trainq_tf = tf.convert_to_tensor(ytrainsampled, dtype = tf.float32)
+y_valq_tf = tf.convert_to_tensor(yvalsampled, dtype = tf.float32)
+y_testq_tf = tf.convert_to_tensor(ytestsampled, dtype = tf.float32)
 print(y_train)
-y_train_tf = tf.convert_to_tensor(y_train, dtype = tf.float32)
-y_val_tf = tf.convert_to_tensor(y_valid, dtype = tf.float32)
-y_test_tf = tf.convert_to_tensor(y_test, dtype = tf.float32)
 
 print(y_train_tf)
 
@@ -134,10 +267,13 @@ np.save("../data/processed/X_val_tf.npy", X_val_tf)
 np.save("../data/processed/y_val_tf.npy", y_val_tf)
 np.save("../data/processed/X_test_tf.npy", X_test_tf)
 np.save("../data/processed/y_test_tf.npy", y_test_tf)
+
 np.save("../data/processed/X_trainq.npy", X_trainq_tf)
 np.save("../data/processed/X_valq.npy", X_valq_tf)
 np.save("../data/processed/X_testq.npy", X_testq_tf)
-
+np.save("../data/processed/y_trainq_tf.npy", y_trainq_tf)
+np.save("../data/processed/y_valq_tf.npy", y_valq_tf)
+np.save("../data/processed/y_testq_tf.npy", y_testq_tf)
 
 print("--------------------DONE------------------------")
 """
