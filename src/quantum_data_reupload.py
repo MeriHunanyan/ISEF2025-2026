@@ -17,7 +17,7 @@ def accuracy(params, X, Y):
 X_test = np.load("../data/processed/X_trainq.npy")
 y_test = np.load("../data/processed/y_trainq_tf.npy")
 y_test  = 2 * y_test  - 1
-n_qubits = params.shape[1]
+n_qubits = 6
 
 dev = qml.device("default.qubit", wires=n_qubits)
 
@@ -37,11 +37,15 @@ def feature_encoding(finger):
 @qml.qnode(dev, interface='autograd')
 def variational_circuit(params, x):
     # Encode features into qubits
-    feature_encoding(x)
-
+    #feature_encoding(x)
+    x_chunks = []
+    for i in range(0, len(x), 5):
+        x_chunks.append(x[i:i+6])
     # params shape: (num_layers, n_qubits, 3)
     # Each qubit in each layer has 3 parameters for RX, RY, and RZ rotations
-    for layer_params in params:
+    for i_layer, layer_params in enumerate(params):
+        #feature_encoding(x_chunks[i_layer])
+        qml.AngleEmbedding(features = x_chunks[i_layer % len(x_chunks)], wires = range(n_qubits), rotation = 'Y')
         for i, wire_params in enumerate(layer_params):
             qml.RX(wire_params[0], wires=i)
             qml.RY(wire_params[1], wires=i)

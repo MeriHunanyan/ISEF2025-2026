@@ -17,8 +17,9 @@ y_valid = np.load("../data/processed/y_valq_tf.npy")
 y_train = 2 * y_train - 1
 y_test  = 2 * y_test  - 1
 y_valid = 2 * y_valid - 1
-n_qubits = 4 # change to pca values
+n_qubits = 6 # change to pca values
 dev = qml.device("default.qubit", wires=n_qubits)
+
 
 H = qml.Hamiltonian(
     coeffs=[1/n_qubits] * n_qubits,
@@ -33,16 +34,22 @@ def feature_encoding(finger):
     #qml.AngleEmbedding(features=finger, wires=range(n_qubits), rotation='X')
     qml.AngleEmbedding(features=finger, wires=range(n_qubits), rotation='Y')
     #qml.AmplitudeEmbedding(finger, wires=range(n_qubits), normalize=True)
-    return [qml.expval(qml.PauliZ(i)) for i in range(4)]
+    return [qml.expval(qml.PauliZ(i)) for i in range(6)]
 
 @qml.qnode(dev, interface='autograd')
 def variational_circuit(params, x):
     # Encode features into qubits
-    feature_encoding(x)
-    
+    x_chunks = [] 
+    for i in range(0, len(x), 5):
+        x_chunks.append(x[i:i+6])
+    #print(len(x_chunks))
+    #print("x_chunks")
+    #print(x_chunks)
     # params shape: (num_layers, n_qubits, 3)
     # Each qubit in each layer has 3 parameters for RX, RY, and RZ rotations
-    for layer_params in params:
+    for i_layer, layer_params in enumerate(params):
+        qml.AngleEmbedding(features=x_chunks[i_layer % len(x_chunks)], wires=range(n_qubits), rotation='Y')
+        #feature_encoding(x_chunks[i_layer])
         for i, wire_params in enumerate(layer_params):
             qml.RX(wire_params[0], wires=i)
             qml.RY(wire_params[1], wires=i)

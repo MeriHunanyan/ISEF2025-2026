@@ -33,7 +33,7 @@ xgb_test = xgb.DMatrix(X_testc, y_testc, enable_categorical=True)
 
 params = {
     'objective': 'binary:logistic',
-    'max_depth': 4,
+    'max_depth': 6,
     'learning_rate': 0.05,
     'scale_pos_weight': 1, #27.85614
     'eval_metric': 'auc',
