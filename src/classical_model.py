@@ -33,7 +33,7 @@ xgb_test = xgb.DMatrix(X_testc, y_testc, enable_categorical=True)
 
 params = {
     'objective': 'binary:logistic',
-    'max_depth': 6,
+    'max_depth': 4,
     'learning_rate': 0.05,
     'scale_pos_weight': 1, #27.85614
     'eval_metric': 'auc',
@@ -78,7 +78,7 @@ print('Threshold=%.3f, F-Score=%.5f' % (thresholds[ix], scores[ix]))
 
 
 #fpr, tpr, thresholds = roc_curve(y_testc, preds)
-preds = (preds >= thresholds[ix]).astype(int)  #0.771
+preds = (preds >= 0.5).astype(int)  #0.771 thresholds[ix]
 print("prediction finished now start accuracy")
 
 accuracy= accuracy_score(y_testc, preds)

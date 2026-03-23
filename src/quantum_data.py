@@ -3,7 +3,7 @@ import pennylane as qml
 from pennylane import numpy as np
 from sklearn.metrics import f1_score
 from sklearn.metrics import roc_auc_score
-
+import matplotlib.pyplot
 params = np.load("../models/quantum_params.npy", allow_pickle=True)
 print("Quantum model parameters loaded.")
 
@@ -63,6 +63,17 @@ def predict_label(raw_preds):
 raw_preds = predict_raw(params, X_test)
 y_pred = predict_label(raw_preds)
 y_test_auc = (y_test + 1) // 2   # {-1,1} → {0,1}
+@qml.qnode(dev)
+def my_custom_ansatz(weights):
+    for layer_params in params:
+        for i, wire_params in enumerate(layer_params):
+            qml.RX(wire_params[0], wires=i)
+            qml.RY(wire_params[1], wires=i)
+            qml.RZ(wire_params[2], wires=i)
+
+        # Entangle the qubits with CNOT gates
+        for i in range(n_qubits - 1):
+            qml.CNOT(wires=[i, i+1])
 
 
 #y_pred = accuracy(params, X_test, y_test)
@@ -70,6 +81,8 @@ print(y_pred)
 f1 = f1_score(y_test, y_pred)
 auc = roc_auc_score(y_test_auc, raw_preds)
 accuracy = accuracy(params, X_test, y_test)
+print(qml.draw(my_custom_ansatz)(params))
+#print(draw.mpl(variational_circuit(params, X_test)))
 print(f1)
 print(auc)
 print(accuracy)
